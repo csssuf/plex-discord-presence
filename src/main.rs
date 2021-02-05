@@ -1,5 +1,4 @@
 use std::io::{self, Read};
-use std::mem;
 use std::sync::mpsc::{channel, Receiver};
 use std::thread;
 use std::time::Duration;
@@ -37,7 +36,6 @@ fn discord_update_loop(rx: Receiver<PlaybackChange>) -> Result<(), Box<dyn std::
                     // Just calling clear_activity() by itself leaves "Playing Plex" still in
                     // the presence, so we do this drop-and-recreate hack to trick Discord into
                     // clearing the presence entirely.
-                    mem::drop(discord);
                     discord = init_discord()?;
                 }
             }
