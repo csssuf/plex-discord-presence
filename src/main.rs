@@ -26,10 +26,10 @@ fn discord_update_loop(rx: Receiver<PlaybackChange>) -> Result<(), Box<dyn std::
     loop {
         if let Ok(change) = rx.recv_timeout(Duration::from_millis(1000)) {
             match change {
-                PlaybackChange::Started(contents) => discord.update_activity(
-                    &Activity::empty().with_state(&contents),
-                    |_, e| { eprintln!("result: {:?}", e) }
-                ),
+                PlaybackChange::Started(contents) => discord
+                    .update_activity(&Activity::empty().with_state(&contents), |_, e| {
+                        eprintln!("result: {:?}", e)
+                    }),
                 PlaybackChange::Stopped => {
                     discord.clear_activity(|_, __| {});
                     discord.run_callbacks()?;
@@ -39,7 +39,7 @@ fn discord_update_loop(rx: Receiver<PlaybackChange>) -> Result<(), Box<dyn std::
                     // clearing the presence entirely.
                     mem::drop(discord);
                     discord = init_discord()?;
-                },
+                }
             }
         }
 
@@ -50,7 +50,7 @@ fn discord_update_loop(rx: Receiver<PlaybackChange>) -> Result<(), Box<dyn std::
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (tx, rx) = channel::<PlaybackChange>();
 
-    thread::spawn(move || { discord_update_loop(rx).unwrap() });
+    thread::spawn(move || discord_update_loop(rx).unwrap());
 
     loop {
         let mut buf = String::new();
