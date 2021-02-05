@@ -6,3 +6,12 @@ edition = "2018"
 
 [dependencies]
 discord_game_sdk = "1.0.1"
+
+[dependencies.plex-api]
+git = "https://github.com/csssuf/plex-api.rs"
+branch = "temp/session-changes"
+
+[dependencies.tokio]
+version = "1.1"
+# shamelessly yoinked from plex-api.rs, may not be necessary
+features = ["macros", "rt-multi-thread", "time"]
