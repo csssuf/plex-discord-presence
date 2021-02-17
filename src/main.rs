@@ -1,10 +1,11 @@
-use std::env;
 use std::sync::mpsc::{channel, Receiver};
 use std::thread;
 use std::time::Duration;
 
 use discord_game_sdk::{Activity, Discord};
 use plex_api::{MediaType, MyPlexAccount, SessionMetadata};
+
+mod config;
 
 const CLIENT_ID: i64 = 807024921858277376;
 
@@ -27,11 +28,11 @@ fn init_discord() -> Result<Discord<'static, ()>, Box<dyn std::error::Error>> {
     Ok(discord)
 }
 
-fn discord_update_loop(rx: Receiver<PlaybackChange>) -> Result<(), Box<dyn std::error::Error>> {
+fn discord_update_loop(rx: Receiver<PlaybackChange>, interval_ms: u64) -> Result<(), Box<dyn std::error::Error>> {
     let mut discord = init_discord()?;
 
     loop {
-        if let Ok(change) = rx.recv_timeout(Duration::from_millis(1000)) {
+        if let Ok(change) = rx.recv_timeout(Duration::from_millis(interval_ms)) {
             match change {
                 PlaybackChange::Started(contents) => discord.update_activity(
                     &Activity::empty()
@@ -77,22 +78,25 @@ fn extract_trackinfo(sessions: Vec<&SessionMetadata>) -> Option<TrackInfo> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let config = config::load_config()?.ok_or_else(|| format!("Please edit the above config and rerun."))?;
+
     let (tx, rx) = channel::<PlaybackChange>();
 
-    thread::spawn(move || discord_update_loop(rx).unwrap());
+    let discord_interval = config.discord.update_interval_ms;
+    thread::spawn(move || discord_update_loop(rx, discord_interval).unwrap());
 
-    let acct = MyPlexAccount::login("csssuf", &env::var("PLEX_PASSWORD").unwrap()).await?;
+    let acct = MyPlexAccount::login(&config.plex.username, &config.plex.password).await?;
     let devices = acct.get_devices().await?;
     let filtered = devices
         .iter()
-        .filter(|d| d.get_name() == "biggie")
+        .filter(|d| d.get_name() == &config.plex.server_name)
         .collect::<Vec<_>>();
-    let biggie = filtered[0].connect_to_server().await?;
+    let server = filtered[0].connect_to_server().await?;
 
     let mut playing = false;
 
     loop {
-        let sessions = biggie.get_sessions().await;
+        let sessions = server.get_sessions().await;
 
         match sessions {
             Ok(s) => {
@@ -116,6 +120,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Err(e) => println!("Failed to fetch sessions: {:?}", e),
         }
 
-        thread::sleep(Duration::from_millis(5000));
+        thread::sleep(Duration::from_millis(config.plex.polling_interval_ms));
     }
 }
