@@ -1,6 +1,7 @@
 use std::fs;
 
 use directories::ProjectDirs;
+use log::{info, warn};
 use serde::{Deserialize, Serialize};
 
 const DEFAULT_DISCORD_INTERVAL_MS: u64 = 5000;
@@ -50,6 +51,7 @@ pub(crate) fn load_config() -> Result<Option<Config>, Box<dyn std::error::Error>
 
     let config_dir = dirs.config_dir();
     if !config_dir.exists() {
+        warn!("Config dir {:?} does not exist, creating", config_dir);
         fs::create_dir(config_dir)?;
     }
 
@@ -58,7 +60,7 @@ pub(crate) fn load_config() -> Result<Option<Config>, Box<dyn std::error::Error>
     if !config_path.exists() {
         let default_config = Config::default();
         fs::write(&config_path, toml::to_string_pretty(&default_config)?)?;
-        println!("Wrote empty config to {:?}", config_path);
+        info!("Wrote empty config to {:?}", config_path);
 
         Ok(None)
     } else {

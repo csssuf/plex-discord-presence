@@ -3,6 +3,8 @@ use std::thread;
 use std::time::Duration;
 
 use discord_game_sdk::{Activity, Discord};
+use env_logger::Env;
+use log::{debug, error, info};
 use plex_api::{MediaType, MyPlexAccount, SessionMetadata};
 
 mod config;
@@ -41,7 +43,11 @@ fn discord_update_loop(
                     &Activity::empty()
                         .with_state(&format!("Track: {}", contents.title))
                         .with_details(&format!("Artist: {}", contents.artist)),
-                    |_, e| eprintln!("result: {:?}", e),
+                    |_, e| {
+                        if e.is_err() {
+                            error!("Discord callback failed: {:?}", e)
+                        }
+                    },
                 ),
                 PlaybackChange::Stopped => {
                     discord.clear_activity(|_, __| {});
@@ -85,6 +91,11 @@ fn extract_trackinfo(sessions: Vec<&SessionMetadata>) -> Option<TrackInfo> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    env_logger::Builder::from_env(
+        Env::default().default_filter_or("info,plex_api::media_container::media::stream=error"),
+    )
+    .init();
+
     let config =
         config::load_config()?.ok_or_else(|| format!("Please edit the above config and rerun."))?;
 
@@ -94,12 +105,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     thread::spawn(move || discord_update_loop(rx, discord_interval).unwrap());
 
     let acct = MyPlexAccount::login(&config.plex.username, &config.plex.password).await?;
+    info!("Logged in to Plex");
     let devices = acct.get_devices().await?;
+    info!("Fetched all devices");
     let filtered = devices
         .iter()
         .filter(|d| d.get_name() == &config.plex.server_name)
         .collect::<Vec<_>>();
     let server = filtered[0].connect_to_server().await?;
+    info!(
+        "Connection to server {} established",
+        &config.plex.server_name
+    );
 
     let mut playing = false;
 
@@ -116,16 +133,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .collect::<Vec<_>>();
 
                 let this_track = extract_trackinfo(valid_sessions);
-                println!("{:#?}", this_track);
+                debug!("Track: {:#?}", this_track);
                 if let Some(track) = this_track {
+                    if !playing {
+                        info!(
+                            "Now playing: {} by {} on {}",
+                            track.title, track.artist, track.album
+                        );
+                    }
                     playing = true;
                     tx.send(PlaybackChange::Started(track)).unwrap();
                 } else if playing && this_track.is_none() {
                     playing = false;
+                    info!("Playback stopped");
                     tx.send(PlaybackChange::Stopped).unwrap();
                 }
             }
-            Err(e) => println!("Failed to fetch sessions: {:?}", e),
+            Err(e) => error!("Failed to fetch sessions: {:?}", e),
         }
 
         thread::sleep(Duration::from_millis(config.plex.polling_interval_ms));
