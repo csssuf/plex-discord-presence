@@ -60,19 +60,22 @@ fn discord_update_loop(rx: Receiver<PlaybackChange>, interval_ms: u64) -> Result
 fn extract_trackinfo(sessions: Vec<&SessionMetadata>) -> Option<TrackInfo> {
     match sessions.len() {
         0 => None,
-        _ => Some(TrackInfo {
-            title: sessions[0].metadata.title.clone(),
-            album: sessions[0]
-                .metadata
-                .parent_title
-                .clone()
-                .unwrap_or_else(|| String::new()),
-            artist: sessions[0]
-                .metadata
-                .grandparent_title
-                .clone()
-                .unwrap_or_else(|| String::new()),
-        }),
+        _ => {
+            let artist = match sessions[0].metadata.original_title {
+                Some(ref a) => Some(a.clone()),
+                None => sessions[0].metadata.grandparent_title.clone(),
+            };
+
+            Some(TrackInfo {
+                title: sessions[0].metadata.title.clone(),
+                album: sessions[0]
+                    .metadata
+                    .parent_title
+                    .clone()
+                    .unwrap_or_else(|| String::new()),
+                artist: artist.unwrap_or_else(|| String::new()),
+            })
+        },
     }
 }
 

@@ -814,7 +814,7 @@ checksum = "3831453b3449ceb48b6d9c7ad7c96d5ea673e9b470a1dc578c2ce6521230884c"
 [[package]]
 name = "plex-api"
 version = "0.0.2"
-source = "git+https://github.com/csssuf/plex-api.rs?branch=temp/session-changes#1383a03c832797a1209b8a1d05bfb04ca4d3fd7a"
+source = "git+https://github.com/csssuf/plex-api.rs?branch=temp/session-changes#e5c0e96059a3bcf53745a81094774ff1dd2a2970"
 dependencies = [
  "async-trait",
  "chrono",
