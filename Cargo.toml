@@ -10,6 +10,7 @@ discord_game_sdk = "1.0.1"
 env_logger = "0.8"
 log = "0.4"
 serde = "1.0"
+sys-info = "0.8"
 toml = "0.5"
 
 [dependencies.plex-api]

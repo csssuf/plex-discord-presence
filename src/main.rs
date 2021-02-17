@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use discord_game_sdk::{Activity, Discord};
 use env_logger::Env;
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use plex_api::{MediaType, MyPlexAccount, SessionMetadata};
 
 mod config;
@@ -22,6 +22,26 @@ struct TrackInfo {
     title: String,
     album: String,
     artist: String,
+}
+
+fn init_plex_client() -> Result<(), Box<dyn std::error::Error>> {
+    if let Some(package) = option_env!("CARGO_PKG_NAME") {
+        let mut product = plex_api::X_PLEX_PRODUCT.write()?;
+        *product = package;
+    }
+
+    if let Some(package_version) = option_env!("CARGO_PKG_VERSION") {
+        let mut version = plex_api::X_PLEX_VERSION.write()?;
+        *version = package_version;
+    }
+
+    let mut ident = plex_api::X_PLEX_CLIENT_IDENTIFIER.write()?;
+    match sys_info::hostname() {
+        Ok(hostname) => *ident = format!("{}_{}", "plex-discord-presence", hostname),
+        Err(e) => warn!("Could not get hostname for X-Plex-Client-Identifier: {}", e),
+    }
+
+    Ok(())
 }
 
 fn init_discord() -> Result<Discord<'static, ()>, Box<dyn std::error::Error>> {
@@ -95,6 +115,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Env::default().default_filter_or("info,plex_api::media_container::media::stream=error"),
     )
     .init();
+
+    init_plex_client()?;
 
     let config =
         config::load_config()?.ok_or_else(|| format!("Please edit the above config and rerun."))?;

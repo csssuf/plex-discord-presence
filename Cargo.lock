@@ -889,6 +889,7 @@ dependencies = [
  "log",
  "plex-api",
  "serde",
+ "sys-info",
  "tokio",
  "toml",
 ]
