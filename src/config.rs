@@ -38,7 +38,9 @@ pub(crate) struct DiscordConfig {
 
 impl Default for DiscordConfig {
     fn default() -> DiscordConfig {
-        DiscordConfig { update_interval_ms: DEFAULT_DISCORD_INTERVAL_MS }
+        DiscordConfig {
+            update_interval_ms: DEFAULT_DISCORD_INTERVAL_MS,
+        }
     }
 }
 
@@ -57,7 +59,7 @@ pub(crate) fn load_config() -> Result<Option<Config>, Box<dyn std::error::Error>
         let default_config = Config::default();
         fs::write(&config_path, toml::to_string_pretty(&default_config)?)?;
         println!("Wrote empty config to {:?}", config_path);
-        
+
         Ok(None)
     } else {
         let config_contents = fs::read_to_string(&config_path)?;

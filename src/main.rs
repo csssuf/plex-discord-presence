@@ -28,7 +28,10 @@ fn init_discord() -> Result<Discord<'static, ()>, Box<dyn std::error::Error>> {
     Ok(discord)
 }
 
-fn discord_update_loop(rx: Receiver<PlaybackChange>, interval_ms: u64) -> Result<(), Box<dyn std::error::Error>> {
+fn discord_update_loop(
+    rx: Receiver<PlaybackChange>,
+    interval_ms: u64,
+) -> Result<(), Box<dyn std::error::Error>> {
     let mut discord = init_discord()?;
 
     loop {
@@ -61,27 +64,29 @@ fn extract_trackinfo(sessions: Vec<&SessionMetadata>) -> Option<TrackInfo> {
     match sessions.len() {
         0 => None,
         _ => {
-            let artist = match sessions[0].metadata.original_title {
-                Some(ref a) => Some(a.clone()),
-                None => sessions[0].metadata.grandparent_title.clone(),
-            };
+            let metadata = &sessions[0].metadata;
+
+            let artist = metadata
+                .original_title
+                .clone()
+                .or(metadata.grandparent_title.clone());
 
             Some(TrackInfo {
-                title: sessions[0].metadata.title.clone(),
-                album: sessions[0]
-                    .metadata
+                title: metadata.title.clone(),
+                album: metadata
                     .parent_title
                     .clone()
                     .unwrap_or_else(|| String::new()),
                 artist: artist.unwrap_or_else(|| String::new()),
             })
-        },
+        }
     }
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let config = config::load_config()?.ok_or_else(|| format!("Please edit the above config and rerun."))?;
+    let config =
+        config::load_config()?.ok_or_else(|| format!("Please edit the above config and rerun."))?;
 
     let (tx, rx) = channel::<PlaybackChange>();
 
