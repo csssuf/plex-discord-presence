@@ -86,27 +86,29 @@ fn discord_update_loop(
     }
 }
 
-fn extract_trackinfo(sessions: Vec<&SessionMetadata>) -> Option<TrackInfo> {
-    match sessions.len() {
-        0 => None,
-        _ => {
-            let metadata = &sessions[0].metadata;
-
-            let artist = metadata
+fn extract_trackinfo(sessions: &[SessionMetadata]) -> Option<TrackInfo> {
+    sessions
+        .into_iter()
+        .filter(|m| m.metadata.media_type == MediaType::Track)
+        .filter(|m| m.player.state == "playing")
+        .next()
+        .map(|session| {
+            let artist = session
+                .metadata
                 .original_title
                 .clone()
-                .or(metadata.grandparent_title.clone());
+                .or(session.metadata.grandparent_title.clone());
 
-            Some(TrackInfo {
-                title: metadata.title.clone(),
-                album: metadata
+            TrackInfo {
+                title: session.metadata.title.clone(),
+                album: session
+                    .metadata
                     .parent_title
                     .clone()
                     .unwrap_or_else(|| String::new()),
                 artist: artist.unwrap_or_else(|| String::new()),
-            })
-        }
-    }
+            }
+        })
 }
 
 #[tokio::main]
@@ -147,14 +149,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         match sessions {
             Ok(s) => {
-                let valid_sessions = s
-                    .metadata
-                    .iter()
-                    .filter(|m| m.metadata.media_type == MediaType::Track)
-                    .filter(|m| m.player.state == "playing")
-                    .collect::<Vec<_>>();
-
-                let this_track = extract_trackinfo(valid_sessions);
+                let this_track = extract_trackinfo(&s.metadata);
                 debug!("Track: {:#?}", this_track);
                 if let Some(track) = this_track {
                     if !playing {
